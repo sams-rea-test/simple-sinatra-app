@@ -1,0 +1,12 @@
+version: '2'
+services:
+    app:
+        build:
+            context: .
+        volumes:
+            - ./config.ru:/app/config.ru
+            - ./helloworld.rb:/app/helloworld.rb
+        environment:
+            RACK_ENV: "development"
+        ports:
+            - 80:80
