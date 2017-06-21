@@ -1,49 +1,56 @@
 REA Systems Engineer practical task
 ===================================
 
-Provision a new application server and deploy the application in this Git repository
-------------------------------------------------------------------------------------
-- Write configuration-as-code recipes (using your preferred orchestration software) to:
-  - Create the server (can be local VM or AWS based)
-  - Configure an OS image (your choice) appropriately.
-  - Deploy the provided application.
-  - Make the application available on port 80.
-  - Ensure that the server is locked down and secure.
-- Provide documentation:
-  - Instructions for the reviewer which explain how your code should be executed
-  - Requirements for running. (AWS account? Base images? Other tooling pre-installed?)
-  - Explanation of assumptions and design choices.
+Hi there! Thanks for reviewing my practical tests. I hope it's at least a little interesting and not a complete flop.
+I hope it's not too obvious that ruby apps aren't my strong point when assessing.
 
-Expected output
----------------
-- Scripts and/or configuration that we can use to deploy the application.
-- Documentation.
+## Assumptions I've made
 
-Submission format
------------------
-Preferred option is a link to public git repository with your solution. We understand you may not want the solution associated with your public profile, feel free to create a new github account for the submission. Alternatively a [git-bundle](https://www.kernel.org/pub/software/scm/git/docs/git-bundle.html) or zip archive are acceptable.
+Hi there! Just to be super clear, here are some of the assumptions that I've made with what is acceptible for our 
+application's infrastructure:
 
+- Developing and deploying using Docker is acceptable
+- Using the official ruby docker images - based on Debian Jessie - is acceptable (although as noted in the `Dockerfile`,
+   converting to Alpine or Centos is achievable as well, and if RHEL is more your taste, that could be done, too.) 
+- Deploying the application onto AWS and EC2 Container Services (ECS) is acceptable
+- Using CloudFormation to provision the infrastructure is acceptable (but unofficial AWS management tools like 
+   Terraform could also be used instead).
 
-To get the provided application working locally
-===============================================
+## Requirements
 
-    git clone git@github.com:rea-cruitment/simple-sinatra-app.git
-    shell $ bundle install
-    shell $ bundle exec rackup
+In order to work on this application, it is assumed that you would have the following installed and configured on your 
+local machine:
 
+- Docker ([one of the linux distributions of Docker engine](https://docs.docker.com/engine/installation/) on linux, 
+   [Docker for Mac](https://docs.docker.com/docker-for-mac/) on a Mac or 
+   [Docker for Windows](https://docs.docker.com/docker-for-windows/install/) on a Windows PC), including 
+   [Docker Compose](https://docs.docker.com/compose/).
 
-How we review the submission
-============================
-We rate the solution and documentation against all the following categories:
+If you want to deploy this app, you'll need to have the following:
 
-- Simplicity
-- Code / documentation layout
-- Ease of deployment
-- Idempotency
-- Security
-- Anti-fragility
+- [AWS Command-line tools](https://aws.amazon.com/cli/) 
+- AWS access key + secret configured (either as environment variables, AWS credentials file, or [another method that is 
+   supported by the client](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)) with access 
+   to CloudFormation and IAM APIs. 
 
-The documentation is as important as the scripts. We are looking to understand why you chose a certain solution and what trade offs it has.
+## Developing
 
-Documenting any known short comings of a solution and the reasons why will be seen as more positive than unmentioned issues. 
+For example purposes, this application is very basic. But, in a real-world case, we'd have actual developers building 
+upon it.
 
+So, if you want to develop upon this (i.e. add real routes and functionality), you would need to do the following:
+
+1. Check out the repository
+2. Build the application:
+
+       docker-compose build --pull app
+
+3. Start the application:
+    
+       docker-compose up
+
+4. Start working the codes. 
+
+Note: I couldn't work out how to get [rerun](http://www.sinatrarb.com/faq.html#reloading) working for development only
+but this (or something similar) would be a logical step for having productive development. 
+For now, any changes to the application's files would need a `docker-compose restart`.
