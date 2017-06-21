@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  An AWS CloudFormation template to create an ECR (effectively docker repository) and conditionally grant an IAM user
+  to push/pull from it.
+
+Parameters:
+  RepositoryName:
+    Type: String
+    Description: The repository name
+    Default: ''
+
+  UserArn:
+    Type: String
+    Description: The ARN of a user to attach this policy to
+    Default: ''
+
+Conditions:
+  HasRepositoryName: !Not [!Equals [!Ref RepositoryName, '']]
+  HasUserAttachment: !Not [!Equals [!Ref UserArn, '']]
+
+Resources:
+  Repository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !If [ HasRepositoryName, !Ref RepositoryName, !Ref 'AWS::NoValue' ]
+
+  PushPullPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: !Sub 'An IAM policy that allows CI/CD services to push and pull to the ${Repository} repository.'
+      Users:
+        - !If [ HasUserAttachment, !Ref UserArn, !Ref 'AWS::NoValue' ]
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - ecr:BatchCheckLayerAvailability
+              - ecr:PutImage
+              - ecr:InitiateLayerUpload
+              - ecr:UploadLayerPart
+              - ecr:CompleteLayerUpload
+            Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${Repository}'
+          -
+            Effect: Allow
+            Action:
+              - ecr:GetAuthorizationToken
+            Resource: '*'
+
+Outputs:
+  ECRPullAddress:
+    Description: The docker pull address for our newly created ECR repository
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${Repository}:latest'
+    Export:
+      Name: !Sub '${AWS::StackName}-ECRPullAddress'
+
+  ECRName:
+    Description: The name of the repository
+    Value: !Ref Repository
+    Export:
+      Name: !Sub '${AWS::StackName}-ECRName'

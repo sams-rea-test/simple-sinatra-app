@@ -66,3 +66,6 @@ scripts are split up into two files:
    
 - **02-ecs.yaml**: An ECS cluster and EC2 launch configuration and auto-scaling group to be able to provision containers
    on to.
+   
+- **03-ecr.yaml**: An ECR repository ("ATM machine") and IAM policy to use to push docker containers to for deploying 
+   on to the ECS cluster.
