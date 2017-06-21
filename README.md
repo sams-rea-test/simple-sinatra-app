@@ -186,7 +186,17 @@ The process to set up the infrastructure from start to finish would work as foll
 - Finally, normally you would not expect that someone would actually manually build and push docker images. This would 
   be the task of your CI/CD service. It seemed beyond the scope of this to go into selecting, configuring and using a 
   CI, but for real workloads it's what I would be using.
+- Logs for the EC2 instances and the container services are going off into the ether, and should probably be captured
+  somewhere centrally for future troubleshooting and analysis. Recommended that these are either directly logged to 
+  CloudWatch, or using syslog, or into an ELK setup.  
 
+## Things I learnt
+
+- Don't follow the template examples for naming your EBS volumes! They suggest `/dev/sda1` for the root disk, and this
+  causes the machine to come up, shut down and terminate in a loop (and gets epensive, very quickly). Ooops.
+  
+- YAML syntax is nice (I'd not used it extensively, but wanted to for this challenge), but if you're unfamilliar with 
+  the syntax it can take longer to figure out what's going on. 
 
 Thanks for your time and consideration,
 
