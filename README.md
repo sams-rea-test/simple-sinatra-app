@@ -64,3 +64,5 @@ scripts are split up into two files:
    and associated routing. Note: Default values are appropriate for ap-southeast-2 (AWS Sydney), but the script should
    work for any region.
    
+- **02-ecs.yaml**: An ECS cluster and EC2 launch configuration and auto-scaling group to be able to provision containers
+   on to.

@@ -1,0 +1,197 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: An AWS CloudFormation template to create an ECS cluster and run the simple-sinatra-app example application.
+
+Parameters:
+  VPCStackName:
+    Type: String
+    Description: The name of the CloudFormation stack containing exported VPC and network resources
+  EcsAmiId:
+    Type: String
+    Description: The AMI ID for your container instances. Defaults to Amazon ECS' optimised distribution
+    Default: ami-fbe9eb98
+  EcsInstanceType:
+    Type: String
+    Description: The EC2 instance type to run the cluster in. Defaults to t2.small
+    Default: t2.small
+    ConstraintDescription: must be a valid EC2 instance type.
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: >
+      Select an existing Amazon EC2 key pair to enable SSH access to the EC2 instances in your cluster.
+  AsgMaxSize:
+    Type: Number
+    Description: >
+      Specifies the number of instances to launch and register to the cluster.
+      Defaults to 1.
+    Default: 1
+  ManagementIngressCidrIp:
+    Type: String
+    Description: >
+      Specifies the CIDR/IP range for SSH access - defaults to no access
+    Default: ''
+  EbsVolumeSize:
+    Type: Number
+    Description: The EBS disk size to provision for each EC2 machine in the ECS cluster
+    Default: 30
+  EbsVolumeType:
+    Type: String
+    Description: The type of EBS to provision for each EC2 machine in the ECS cluster
+    Default: gp2
+    AllowedValues:
+      - standard
+      - gp2
+    ConstraintDescription: Must be a valid EC2 volume type.
+  EbsDeviceName:
+    Type: String
+    Description: The device mapping for the EBS volume
+    Default: /dev/xvdcz
+
+Conditions:
+  CreateManagementAccess:
+    !Not [!Equals [!Ref ManagementIngressCidrIp, '']]
+
+  EnableSSHAccess: !And
+    - !Not [!Equals [!Ref KeyName, '']]
+    - !Condition CreateManagementAccess
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for our ECS EC2 instances
+      VpcId:
+        Fn::ImportValue:
+          !Sub '${VPCStackName}-VPCId'
+
+  SecurityGroupIngressSSH:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: EnableSSHAccess
+    Properties:
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: !Ref ManagementIngressCidrIp
+
+  SecurityGroupIngressICMP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: CreateManagementAccess
+    Properties:
+      GroupId: !Ref SecurityGroup
+      IpProtocol: icmp
+      FromPort: '-1'
+      ToPort: '-1'
+      CidrIp: !Ref ManagementIngressCidrIp
+
+
+  SecurityGroupIngressHttp:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 0.0.0.0/0
+
+  SecurityGroupIngressALB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 9000
+      ToPort: 9000
+      SourceSecurityGroupId: !Ref SecurityGroup
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2008-10-17
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      Path: '/'
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:CreateCluster
+                  - ecs:DeregisterContainerInstance
+                  - ecs:DiscoverPollEndpoint
+                  - ecs:Poll
+                  - ecs:RegisterContainerInstance
+                  - ecs:StartTelemetrySession
+                  - ecs:UpdateContainerInstancesState
+                  - ecs:Submit*
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: '/'
+      Roles:
+        - !Ref InstanceRole
+
+  InstanceLaunchConf:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !Ref EcsAmiId
+      InstanceType: !Ref EcsInstanceType
+      AssociatePublicIpAddress: true
+      IamInstanceProfile: !Ref InstanceProfile
+      KeyName: !If [ EnableSSHAccess, !Ref KeyName, !Ref 'AWS::NoValue' ]
+      SecurityGroups:
+        - !Ref SecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: !Ref EbsDeviceName
+          Ebs:
+            VolumeSize: !Ref EbsVolumeSize
+            VolumeType: !Ref EbsVolumeType
+      UserData:
+        Fn::Base64: !Sub |
+           #!/bin/bash
+           echo ECS_CLUSTER="${ECSCluster}" >> /etc/ecs/ecs.config
+
+  InstanceASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: !Split
+        - ','
+        - Fn::ImportValue:
+            !Sub '${VPCStackName}-Subnets'
+      LaunchConfigurationName: !Ref InstanceLaunchConf
+      MinSize: '0'
+      MaxSize: !Ref AsgMaxSize
+      DesiredCapacity: !Ref AsgMaxSize
+      Tags:
+        -
+          Key: Name
+          Value: !Sub 'ECS@${AWS::StackName}'
+          PropagateAtLaunch: 'true'
+
+Outputs:
+  ECSCluster:
+    Description: The ECS Cluster
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Sub '${AWS::StackName}-ECSCluster'
+
+  SecurityGroup:
+    Description: The Security Group for our ECS cluster
+    Value: !Ref SecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-SecurityGroup'
