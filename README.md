@@ -54,3 +54,13 @@ So, if you want to develop upon this (i.e. add real routes and functionality), y
 Note: I couldn't work out how to get [rerun](http://www.sinatrarb.com/faq.html#reloading) working for development only
 but this (or something similar) would be a logical step for having productive development. 
 For now, any changes to the application's files would need a `docker-compose restart`.
+
+## Deployment
+
+To keep the VPC and associated networking infrastructure only loosely coupled to the actual machines, the CloudFormation
+scripts are split up into two files:
+
+- **01-vpc-networking.yaml**: A VPC configured with a subnet in each of up-to 3 availability zones, an internet gateway 
+   and associated routing. Note: Default values are appropriate for ap-southeast-2 (AWS Sydney), but the script should
+   work for any region.
+   
