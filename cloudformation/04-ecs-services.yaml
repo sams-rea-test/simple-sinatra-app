@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: An AWS CloudFormation template to create our ECS Services on our cluster!
+
+Parameters:
+  VPCStackName:
+    Type: String
+    Description: The name of the stack that holds the VPC configuration
+
+  ECSStackName:
+    Type: String
+    Description: The name of the stack that holds the ECS configuration
+
+  ECRStackName:
+    Type: String
+    Description: The name of the stack that holds the ECR repository
+
+  DesiredContainerCount:
+    Type: Number
+    Default: 1
+
+Resources:
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      LoadBalancerAttributes:
+      - Key: idle_timeout.timeout_seconds
+        Value: 30
+      Subnets: !Split
+        - ','
+        - Fn::ImportValue:
+            !Sub '${VPCStackName}-Subnets'
+      SecurityGroups:
+        - Fn::ImportValue:
+            !Sub '${ECSStackName}-SecurityGroup'
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn: AppServiceRole
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref ALBTargetGroup
+      LoadBalancerArn: !Ref ALB
+      Port: 80
+      Protocol: HTTP
+
+  ALBListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+      - Type: forward
+        TargetGroupArn: !Ref ALBTargetGroup
+      Conditions:
+      - Field: path-pattern
+        Values: [/]
+      ListenerArn: !Ref ALBListener
+      Priority: 1
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: ALB
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      Name: ALBTargetGroup
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId:
+        Fn::ImportValue:
+          !Sub '${VPCStackName}-VPCId'
+
+  AppTask:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        -
+          Name:
+            Fn::ImportValue:
+              !Sub '${ECRStackName}-ECRName'
+          Image:
+            Fn::ImportValue:
+              !Sub '${ECRStackName}-ECRPullAddress'
+          PortMappings:
+            -
+              ContainerPort: 80
+              HostPort: 9000
+          Memory: 1024
+          Essential: "true"
+
+  AppService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster:
+        Fn::ImportValue:
+          !Sub '${ECSStackName}-ECSCluster'
+      DesiredCount: !Ref DesiredContainerCount
+      TaskDefinition: !Ref AppTask
+      Role: !Ref AppServiceRole
+      LoadBalancers:
+        - TargetGroupArn: !Ref ALBTargetGroup
+          ContainerPort: 80
+          ContainerName:
+            Fn::ImportValue:
+              !Sub '${ECRStackName}-ECRName'
+
+  AppServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2008-10-17
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ecs.amazonaws.com }
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: ecs-service
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+            - Effect: Allow
+              Action: 
+                - elasticloadbalancing:DeregisterInstancesFromLoadBalancer
+                - elasticloadbalancing:DeregisterTargets
+                - elasticloadbalancing:Describe*
+                - elasticloadbalancing:RegisterInstancesWithLoadBalancer
+                - elasticloadbalancing:RegisterTargets
+                - ec2:Describe*
+                - ec2:AuthorizeSecurityGroupIngress
+              Resource: '*'

@@ -69,3 +69,5 @@ scripts are split up into two files:
    
 - **03-ecr.yaml**: An ECR repository ("ATM machine") and IAM policy to use to push docker containers to for deploying 
    on to the ECS cluster.
+
+- **04-ecr-services.yaml**: Finally, adds a load balancer and the ECS services to run the container on AWS ECS.
