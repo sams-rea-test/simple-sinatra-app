@@ -63,3 +63,7 @@ Outputs:
     Value: !Ref Repository
     Export:
       Name: !Sub '${AWS::StackName}-ECRName'
+
+  StackName:
+    Description: The Stack name (used when deploying the stack-in-stack)
+    Value: !Ref 'AWS::StackName'

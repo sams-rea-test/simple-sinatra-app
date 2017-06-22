@@ -134,3 +134,12 @@ Resources:
                 - ec2:Describe*
                 - ec2:AuthorizeSecurityGroupIngress
               Resource: '*'
+
+Outputs:
+  StackName:
+    Description: The Stack name (used when deploying the stack-in-stack)
+    Value: !Ref 'AWS::StackName'
+
+  ALBURL:
+    Description: The URL to access the service at
+    Value: !Sub "http://${ALB.DNSName}"

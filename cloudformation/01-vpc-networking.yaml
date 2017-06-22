@@ -135,3 +135,7 @@ Outputs:
     Value: !Ref VpcCidr
     Export:
       Name: !Sub '${AWS::StackName}-VPCCidr'
+
+  StackName:
+    Description: The Stack name (used when deploying the stack-in-stack)
+    Value: !Ref 'AWS::StackName'

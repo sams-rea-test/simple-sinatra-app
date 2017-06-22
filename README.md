@@ -4,6 +4,7 @@ REA Systems Engineer practical task
 Hi there! Thanks for reviewing my practical tests. I hope it's at least a little interesting and not a complete flop.
 I hope it's not too obvious that ruby apps aren't my strong point when assessing.
 
+
 ## Assumptions I've made
 
 Hi there! Just to be super clear, here are some of the assumptions that I've made with what is acceptible for our 
@@ -15,6 +16,7 @@ application's infrastructure:
 - Deploying the application onto AWS and EC2 Container Services (ECS) is acceptable
 - Using CloudFormation to provision the infrastructure is acceptable (but unofficial AWS management tools like 
    Terraform could also be used instead).
+
 
 ## Explaining the solution
 
@@ -35,6 +37,7 @@ maintain a separation of responsibilities where possible. The areas, which are d
  - Application artifact storage
  - Application runtime
 
+
 ## Requirements
 
 In order to work on this application, it is assumed that you would have the following installed and configured on your 
@@ -51,6 +54,7 @@ If you want to deploy this app, you'll need to have the following:
 - AWS access key + secret configured (either as environment variables, AWS credentials file, or [another method that is 
    supported by the client](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)) with access 
    to CloudFormation and IAM APIs. 
+
 
 ## Developing
 
@@ -74,6 +78,7 @@ Note: I couldn't work out how to get [rerun](http://www.sinatrarb.com/faq.html#r
 but this (or something similar) would be a logical step for having productive development. 
 For now, any changes to the application's files would need a `docker-compose restart`.
 
+
 ## Deployment
 
 To keep the VPC and associated networking infrastructure only loosely coupled to the actual machines, the CloudFormation
@@ -91,6 +96,44 @@ scripts are split up into a series of files, which need to be created in sequenc
 
 - **04-ecr-services.yaml**: Finally, adds a load balancer and the ECS services to run the container on AWS ECS.
 
+A stack-in-stack CloudFormation script is also provided (**00-cloudformation-stackinstack.yaml**) which accepts all the 
+defaults mentioned below, as a way of deploying the infrastructure quickly.
+
+
+### Deploying using the stack-in-stack template
+
+1. Create a CloudFormation stack for the `00-cloudformation-stackinstack.yaml` template. 
+
+   Accept the default values for the *URL parameters, select a SSH keypair, and set **IsContainerReadyToDeploy**
+   to `no`.
+
+   Note: If you don't want to upload my templates to your own S3, you can deploy it to CloudFormation using the 
+   following URL: [https://s3-ap-southeast-2.amazonaws.com/rea-cruitment-cfscripts/00-cloudformation-stackinstack.yaml](https://s3-ap-southeast-2.amazonaws.com/rea-cruitment-cfscripts/00-cloudformation-stackinstack.yaml)
+
+2. Once the mega-stack and it's (initial) three child stacks have created, view the outputs and note the 
+   `DockerPushAddress` value.  
+
+3. Build the docker image, like so:
+
+   (Assuming you are inside the directory containing this file)
+
+       docker build -t [repository URI from step 2] .
+       
+4. Log in to ECR using the login command below:
+
+       eval $(aws ecr get-login --region ap-southeast-2)
+
+5. Push the docker image to ECR, like so:
+
+       docker push [repository URI from step 2]
+
+6. Update the mega-stack's parameters, and set **IsContainerReadyToDeploy** to `yes`. 
+
+7. Wait for the stack to create, and then you can access the application at the URL provided in the `PublicURL` stack 
+   output.
+
+
+### Deploying components individually 
 The process to set up the infrastructure from start to finish would work as follows:
 
 1. Create a CloudFormation stack for the `01-vpc-networking.yaml` template. For an express experience, operating in 
@@ -169,7 +212,8 @@ The process to set up the infrastructure from start to finish would work as foll
      - ECRStackName: The name of the CloudFormation stack holding the ECR (application) resources 
      - DesiredContainerCount: The number of container services to launch. It is recommended that this be a similar 
        value to the EC2 instaces created. Default: 1  
- 
+
+
 ## Future thoughts and enhancements
 
 - For the app to truly thrive in a production environment, you wouldn't normally run rackup as your front-facing, 
@@ -189,6 +233,7 @@ The process to set up the infrastructure from start to finish would work as foll
 - Logs for the EC2 instances and the container services are going off into the ether, and should probably be captured
   somewhere centrally for future troubleshooting and analysis. Recommended that these are either directly logged to 
   CloudWatch, or using syslog, or into an ELK setup.  
+
 
 ## Things I learnt
 

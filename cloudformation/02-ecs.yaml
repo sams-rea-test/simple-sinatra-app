@@ -195,3 +195,7 @@ Outputs:
     Value: !Ref SecurityGroup
     Export:
       Name: !Sub '${AWS::StackName}-SecurityGroup'
+
+  StackName:
+    Description: The Stack name (used when deploying the stack-in-stack)
+    Value: !Ref 'AWS::StackName'

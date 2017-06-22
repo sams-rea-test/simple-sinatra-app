@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: An AWS CloudFormation template to create a brand new VPC and security groups.
+
+Parameters:
+  VpcNetworkingStackURL:
+    Type: String
+    Description: S3 URL to access the 01-vpc-networking.yaml template file
+    Default: 'https://s3-ap-southeast-2.amazonaws.com/rea-cruitment-cfscripts/01-vpc-networking.yaml'
+
+  EcsStackURL:
+    Type: String
+    Description: S3 URL to access the 02-ecs.yaml template file
+    Default: 'https://s3-ap-southeast-2.amazonaws.com/rea-cruitment-cfscripts/02-ecs.yaml'
+
+  EcrStackURL:
+    Type: String
+    Description: S3 URL to access the 03-ecr.yaml template file
+    Default: 'https://s3-ap-southeast-2.amazonaws.com/rea-cruitment-cfscripts/03-ecr.yaml'
+
+  EcsServicesStackURL:
+    Type: String
+    Description: S3 URL to access the 04-ecs-services.yaml template file
+    Default: 'https://s3-ap-southeast-2.amazonaws.com/rea-cruitment-cfscripts/04-ecs-services.yaml'
+
+  IsContainerReadyToDeploy:
+    Type: String
+    AllowedValues:
+      - 'yes'
+      - 'no'
+    Description: Is the docker container pushed to ECR on the 'latest' tag?
+    Default: 'no'
+
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: >
+      Select an existing Amazon EC2 key pair to enable SSH access to the EC2 instances in your cluster.
+
+  ManagementIngressCidrIp:
+    Type: String
+    Description: >
+      Specifies the CIDR/IP range for SSH access - defaults to no access
+    Default: ''
+
+Conditions:
+  DeployECSService: !Equals [!Ref IsContainerReadyToDeploy, 'yes']
+
+Resources:
+  VpcNetworkingStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Ref VpcNetworkingStackURL
+
+  EcsStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Ref EcsStackURL
+      Parameters:
+        VPCStackName: !GetAtt VpcNetworkingStack.Outputs.StackName
+        KeyName: !Ref KeyName
+        ManagementIngressCidrIp: !Ref ManagementIngressCidrIp
+
+  EcrStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Ref EcrStackURL
+
+  EcsServicesStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: DeployECSService
+    Properties:
+      TemplateURL: !Ref EcsServicesStackURL
+      Parameters:
+        VPCStackName: !GetAtt VpcNetworkingStack.Outputs.StackName
+        ECSStackName: !GetAtt EcsStack.Outputs.StackName
+        ECRStackName: !GetAtt EcrStack.Outputs.StackName
+
+Outputs:
+  DockerPushAddress:
+    Description: The docker push address for the contained ECR repository
+    Value: !GetAtt EcrStack.Outputs.ECRPullAddress
+
+  PublicURL:
+    Description: The URL to access the published application
+    Value: !If
+      - DeployECSService
+      - !GetAtt EcsServicesStack.Outputs.ALBURL
+      - ''
