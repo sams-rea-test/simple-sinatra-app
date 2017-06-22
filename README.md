@@ -7,7 +7,7 @@ I hope it's not too obvious that ruby apps aren't my strong point when assessing
 
 ## Assumptions I've made
 
-Hi there! Just to be super clear, here are some of the assumptions that I've made with what is acceptible for our 
+Hi there! Just to be super clear, here are some of the assumptions that I've made with what is acceptable for our 
 application's infrastructure:
 
 - Developing and deploying using Docker is acceptable
