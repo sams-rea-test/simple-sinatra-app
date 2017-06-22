@@ -141,37 +141,37 @@ The process to set up the infrastructure from start to finish would work as foll
    Wait for AWS to provision the VPC stack's resources.
    
    Complete parameter definitions:
-     - VpcCidr: A CIDR annotation defining the boundaries of the AWS VPC's internal IP addresses. Default: 10.0.0.0/16
-     - SubnetCidr1: A CIDR annotation defining the boundaries of AZ 1's internal IP addresses. Default: 10.0.0.0/24
-     - SubnetCidr2: A CIDR annotation defining the boundaries of AZ 2's internal IP addresses. Default: 10.0.1.0/24
-     - SubnetCidr3: A CIDR annotation defining the boundaries of AZ 3's internal IP addresses. Default: 10.0.2.0/24
-     - VpcAvailabilityZones: A comma-separated list of the availability zones to operate the VPC across. 
+     - `VpcCidr`: A CIDR annotation defining the boundaries of the AWS VPC's internal IP addresses. Default: 10.0.0.0/16
+     - `SubnetCidr1`: A CIDR annotation defining the boundaries of AZ 1's internal IP addresses. Default: 10.0.0.0/24
+     - `SubnetCidr2`: A CIDR annotation defining the boundaries of AZ 2's internal IP addresses. Default: 10.0.1.0/24
+     - `SubnetCidr3`: A CIDR annotation defining the boundaries of AZ 3's internal IP addresses. Default: 10.0.2.0/24
+     - `VpcAvailabilityZones`: A comma-separated list of the availability zones to operate the VPC across. 
        Default: all three AWS Sydney AZs ("ap-southeast-2c,ap-southeast-2b,ap-southeast-2a")
     
 2. Create a CloudFormation stack for the `02-ecs.yaml` template.  Name the stack **sams-rea-test-02**. Moving quickly 
    through, the parameters should be something like this:
    
-     - VPCStackName: sams-rea-test-01
-     - EcsInstanceType: use any standard EC2 instance type, or accept the default
-     - KeyName: if you want to allow SSH, select an EC2 key pair. If not, leave blank
-     - AsgMaxSize: this sets both the desired and maximum EC2 instances to launch for our ECS cluster. For demo purposes
-       you probably want to leave it at 1. But feel free to play.
-     - ManagementIngressCidrIp: important that this is set to a sane value, otherwise the EC2 machines end up with open SSH 
-       access. 
+     - `VPCStackName`: sams-rea-test-01
+     - `EcsInstanceType`: use any standard EC2 instance type, or accept the default
+     - `KeyName`: if you want to allow SSH, select an EC2 key pair. If not, leave blank
+     - `AsgMaxSize`: this sets both the desired and maximum EC2 instances to launch for our ECS cluster. For demo 
+       purposes you probably want to leave it at 1. But feel free to play.
+     - `ManagementIngressCidrIp`: important that this is set to a sane value, otherwise the EC2 machines end up with 
+       open SSH access. 
      - Remaining parameters can be left with their default values
      
    Complete parameter definitions:
-     - VPCStackName: The name of the CloudFormation stack holding the VPC and networking resources 
-     - EcsAmiId: The AMI to use to create EC2 instances for the ECS cluster. Default: ami-fbe9eb98 (AWS' ECS 
+     - `VPCStackName`: The name of the CloudFormation stack holding the VPC and networking resources 
+     - `EcsAmiId`: The AMI to use to create EC2 instances for the ECS cluster. Default: ami-fbe9eb98 (AWS' ECS 
        optimised image)
-     - EcsInstanceType: The type of EC2 instances to launch. Default: t2.small
-     - KeyName: An EC2 key pair (aka SSH public keys) to provision on our EC2 machines. Default: Does not provision keys
-     - AsgMaxSize: The number of instances to launch when the stack is created. Default: 1 
-     - ManagementIngressCidrIp: A CIDR annotation of what IP addresses can access EC2 instances over SSH. 
+     - `EcsInstanceType`: The type of EC2 instances to launch. Default: t2.small
+     - `KeyName`: An EC2 key pair (aka SSH public keys) to provision on our EC2 machines. Default: Does not provision keys
+     - `AsgMaxSize`: The number of instances to launch when the stack is created. Default: 1 
+     - `ManagementIngressCidrIp`: A CIDR annotation of what IP addresses can access EC2 instances over SSH. 
        Default: none (127.0.0.1/32)
-     - EbsVolumeSize: The size of the EBS disks to provision for each EC2 instance, in GB. Default: 20GB
-     - EbsVolumeType: The type of EBS disks to provision. Default: gp2 (AWS' key for SSD disks)
-     - EbsDeviceName: The device name to map the EBS volume to. Default: /dev/sda1
+     - `EbsVolumeSize`: The size of the EBS disks to provision for each EC2 instance, in GB. Default: 20GB
+     - `EbsVolumeType`: The type of EBS disks to provision. Default: gp2 (AWS' key for SSD disks)
+     - `EbsDeviceName`: The device name to map the EBS volume to. Default: /dev/sda1
      
 3. Create a CloudFormation stack for the `03-ecr.yaml` template. Name the stack **sams-rea-test-03**. The parameters can 
    be left as their default values without issue.
@@ -180,8 +180,8 @@ The process to set up the infrastructure from start to finish would work as foll
    EC2 Container Services - Repositories - (Select the new repository) - View Push Commands.
    
    Complete parameter definitions:
-     - RepositoryName: The name to give the repository. Default: none (CloudFormation will assign a random name)
-     - UserArn: An ARN of an existing IAM user to grant docker push and pull access to the repository, if required.
+     - `RepositoryName`: The name to give the repository. Default: none (CloudFormation will assign a random name)
+     - `UserArn`: An ARN of an existing IAM user to grant docker push and pull access to the repository, if required.
        Default: none
 
 4. Build the docker image, like so:
@@ -201,16 +201,16 @@ The process to set up the infrastructure from start to finish would work as foll
 7. Create the final CloudFormation stack for the `04-ecr-services.yaml` template. Name the stack **sams-rea-test-04**. 
    Parameters should be similar to this:
     
-     - VPCStackName: sams-rea-test-01 
-     - ECSStackName: sams-rea-test-02
-     - ECRStackName: sams-rea-test-03
-     - DesiredContainerCount: left as default
+     - `VPCStackName`: sams-rea-test-01 
+     - `ECSStackName`: sams-rea-test-02
+     - `ECRStackName`: sams-rea-test-03
+     - `DesiredContainerCount`: left as default
      
    Complete parameter definitions:
-     - VPCStackName: The name of the CloudFormation stack holding the VPC and networking resources 
-     - ECSStackName: The name of the CloudFormation stack holding the ECS and compute resources
-     - ECRStackName: The name of the CloudFormation stack holding the ECR (application) resources 
-     - DesiredContainerCount: The number of container services to launch. It is recommended that this be a similar 
+     - `VPCStackName`: The name of the CloudFormation stack holding the VPC and networking resources 
+     - `ECSStackName`: The name of the CloudFormation stack holding the ECS and compute resources
+     - `ECRStackName`: The name of the CloudFormation stack holding the ECR (application) resources 
+     - `DesiredContainerCount`: The number of container services to launch. It is recommended that this be a similar 
        value to the EC2 instaces created. Default: 1  
 
 
